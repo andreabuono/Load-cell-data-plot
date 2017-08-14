@@ -1,4 +1,12 @@
-import matplotlib.pyplot as plt
+import os
+import numpy.polynomial.polynomial as poly
+import numpy as np
+import plotly.plotly as py
+import plotly.graph_objs as go
+import plotly
+
+
+os.chdir('Test 2')
 
 avg_Fz = []
 volt_set = []
@@ -27,6 +35,7 @@ for k in range(len(files)):
 		a = line.split(', ')
 		if a[0] != 't':
 			Fz.append(float(a[3]))
+
 	avg_Fz.append  (((sum(Fz)/len(Fz))-Fz_off)/2)
 
 infile = "voltage_current.log"
@@ -38,16 +47,47 @@ for line in f:
 		volt_mes.append(float(a[1]))
 		current_mes.append(float(a[2]))
 
+for i in range(len(volt_mes)):
+	volt_mes[i] = volt_mes[i]* (65535.0/3.7)
+	volt_set[i] = volt_set[i]* (65535.0/3.7)
 
-fig = plt.figure()
-fig_1 = fig.add_subplot(111)
-fig_1.grid(True, lw = 2, ls = '--', c = '.75')
-fig_1.plot(volt_mes, avg_Fz,linewidth=2, c='blue')
-fig_1.plot(volt_set, avg_Fz,linewidth=2, c='red')
-fig_1.set_xlabel('Voltage (V)')
-fig_1.set_ylabel('Thrust (N)')
+coefs = poly.polyfit(volt_mes, avg_Fz, 2)
+x_new = np.linspace(0,70000)
+ffit = poly.polyval(x_new, coefs)
 
-print avg_Fz
+coefs2 = poly.polyfit(current_mes, avg_Fz, 1)
+x_new2 = np.linspace(0,2.5)
+ffit2 = poly.polyval(x_new2, coefs2)
 
-plt.show()
+trace1 = go.Scatter(x=volt_mes, y=avg_Fz, mode = 'markers' , name = 'raw data')
+trace2 = go.Scatter(x=x_new, y=ffit, name = 'interpolated')
+
+axis_template_x = dict(
+	showgrid= True,
+	zeroline = True,
+	nticks =20,
+	showline = True,
+	title = 'PWM-Signal',
+	mirror = 'all')
+
+axis_template_y = dict(
+	showgrid= True,
+	zeroline = True,
+	nticks =20,
+	showline = True,
+	title = 'Thrust (N)',
+	mirror = 'all')
+
+layout = go.Layout(
+	title = 'Load cell Thrust moded',
+	xaxis = axis_template_x,
+	yaxis = axis_template_y,
+	)
+
+data = [trace1, trace2]
+
+fig = go.Figure(data = data,
+	layout = layout)
+
+plotly.offline.plot(fig)
 
